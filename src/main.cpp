@@ -28,6 +28,21 @@
 using namespace std;
 using namespace Eigen;
 
+Vector3f gravity(0.0f, -0.98f, 0.0f);
+
+//Spring properties
+int springNum;
+float springConst = 10.0f;
+float restLength = 1.0f;
+float damper = 0.8f;
+
+
+//Particle properties
+int particleNum;
+float mass = 0.01f;
+
+//number of particles grid
+const int gridSize = 13;
 
 //****************************************************
 // Some Classes
@@ -99,6 +114,37 @@ void myDisplay() {
 	glMatrixMode(GL_MODELVIEW);             // indicate we are specifying camera transformations
 	glLoadIdentity();
 
+  //draw cloth
+  glEnable(GL_LIGHTING);
+  glMaterialfv(GL_FRONT, GL_AMBIENT, COLOR(0.8f, 0.0f, 1.0f));  //set material
+  glMaterialfv(GL_FRONT, GL_DIFFUSE, COLOR(0.8f, 0.0f, 1.0f));
+  glMaterialfv(GL_BACK, GL_AMBIENT, COLOR(1.0f, 1.0f, 0.0f));
+  glMaterialfv(GL_BACK, GL_DIFFUSE, COLOR(1.0f, 1.0f, 0.0f));
+  glBegin(GL_TRIANGLES);
+  {
+      for(int i=0; i<gridSize-1; ++i)
+      {
+        for(int j=0; j<gridSize-1; ++j)
+        {
+          glNormal3fv(currentBalls[i*gridSize+j].normal);
+          glVertex3fv(currentBalls[i*gridSize+j].position);
+          glNormal3fv(currentBalls[i*gridSize+j+1].normal);
+          glVertex3fv(currentBalls[i*gridSize+j+1].position);
+          glNormal3fv(currentBalls[(i+1)*gridSize+j].normal);
+          glVertex3fv(currentBalls[(i+1)*gridSize+j].position);
+
+          glNormal3fv(currentBalls[(i+1)*gridSize+j].normal);
+          glVertex3fv(currentBalls[(i+1)*gridSize+j].position);
+          glNormal3fv(currentBalls[i*gridSize+j+1].normal);
+          glVertex3fv(currentBalls[i*gridSize+j+1].position);
+          glNormal3fv(currentBalls[(i+1)*gridSize+j+1].normal);
+          glVertex3fv(currentBalls[(i+1)*gridSize+j+1].position);
+        }
+      }
+    }
+    glEnd();
+    glDisable(GL_LIGHTING);
+  }
 	
 	glPopMatrix();
 	
@@ -113,7 +159,7 @@ int main(int argc, char** argv) {
 	//This initializes glut
   	glutInit(&argc, argv);
   	
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+	  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 
   	// Initalize theviewport size
   	viewport.w = 400;
