@@ -3,6 +3,11 @@
 #ifndef Particles_H
 #define Particles_H
 
+#include <vector>
+#include <Eigen/Dense>
+
+using namespace Eigen;
+
 class Particles{
 
 public:

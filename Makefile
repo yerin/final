@@ -11,17 +11,18 @@ endif
 	
 RM = /bin/rm -f 
 all: main 
-ALL_OBJS = obj/main.o obj/particles.o obj/constraints.o
+ALL_OBJS = obj/main.o obj/particles.o obj/spring.o
 main: $(ALL_OBJS)
 	$(CC) $(CFLAGS) -o final $(ALL_OBJS) $(LDFLAGS) 
-MAIN_DEP = include/Particles.h include/Constraints.h
+MAIN_DEP = include/Particles.h include/Spring.h 
 obj/main.o: src/main.cpp $(MAIN_DEP)
 	$(CC) $(CFLAGS) -c src/main.cpp -o obj/main.o
 obj/particles.o: src/Particles.cpp
 	$(CC) $(CFLAGS) -c src/Particles.cpp -o obj/particles.o
 SUB_DEP = include/Particles.h
-obj/constraints.o: src/Constraints.cpp $(SUB_DEP)
-	$(CC) $(CFLAGS) -c src/Constraints.cpp -o obj/constraints.o
+obj/spring.o: src/Spring.cpp $(SUB_DEP)
+	$(CC) $(CFLAGS) -c src/Spring.cpp -o obj/spring.o
+SUB_DEP = include/Spring.h include/Particles.h
 clean: 
 	$(RM) *.o final
 

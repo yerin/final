@@ -23,26 +23,38 @@
 #include <Eigen/Dense>
 
 #include "Particles.h"
-#include "Constraints.h"
+#include "Spring.h"
+#include "Cloth.h"
 
 using namespace std;
 using namespace Eigen;
 
 Vector3f gravity(0.0f, -0.98f, 0.0f);
 
+//number of particles in a grid
+//const int gridSize = 13;
+int gridWidth, gridHeight;
+
 //Spring properties
-int springNum;
+int numS;
 float springConst = 10.0f;
 float restLength = 1.0f;
 float damper = 0.8f;
-
+//Spring *springs = NULL;
+vector<Spring> springs;
 
 //Particle properties
-int particleNum;
+int numP;
 float mass = 0.01f;
+Particles *p1=NULL;
+Particles *p2=NULL;
+Particles *currentP=NULL;
+Particles *nextP=NULL;
+vector<Particles> p;
 
-//number of particles grid
-const int gridSize = 13;
+
+
+
 
 //****************************************************
 // Some Classes
@@ -70,6 +82,10 @@ void initScene(){
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
 	*/
   // Nothing to do here for this simple example.
+
+  p1 = new Particles[gridWidth*gridHeight];
+  p2 = new Particles[gridWidth*gridHeight];
+  //springs = new Spring[]
 
 }
 
@@ -107,49 +123,129 @@ void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
 }
 
 //****************************************************
+// Cloth Methods
+//****************************************************
+void drawTriangle(Particles p1, Particles p2, Particles p3){
+
+  //p1
+  glNormal3fv((GLfloat *) &(p1.normal));
+  glVertex3fv((GLfloat *) &(p1.position));
+
+  //p2
+  glNormal3fv((GLfloat *) &(p2.normal));
+  glVertex3fv((GLfloat *) &(p2.position));
+
+  //p3
+  glNormal3fv((GLfloat *) &(p3.normal));
+  glVertex3fv((GLfloat *) &(p3.position));
+
+}
+
+Vector3f triangleNorm(Particles p1, Particles p2, Particles p3){
+  Vector3f v1 = p2.position - p1.position;
+  Vector3f v2 = p3.position - p1.position;
+
+  return v1.cross(v2);
+}
+
+vector<Particles> drawCloth(float width, float height, int gridWidth, int gridHeight){
+  //cloth structure as grid of particles
+  p.resize(gridWidth*gridHeight);
+  for(int i=0; i<gridWidth; i++){
+    for(int j=0; j<gridHeight; j++){
+      Particles n;
+      n.position = Vector3f(width * (i/(float)gridWidth), -height * (j/(float)gridHeight), 0);
+      p[j*gridWidth+i]= n;
+    }
+  }
+
+  //connecting immediate particles with springs
+  for(int i=0; i<gridWidth; i++){
+    for(int j=0; j<gridHeight; j++){
+
+      if(i<gridWidth-1){
+        springs.push_back(Spring(p[j*gridWidth+i],p[j*gridWidth+(i+1)]));
+      }
+      if(j<gridHeight-1){
+        springs.push_back(Spring(p[j*gridWidth+i],p[(j+1)*gridWidth+i]));
+      } 
+      if(i<gridWidth-1 && j<gridHeight-1){
+        springs.push_back(Spring(p[j*gridWidth+i],p[(j+1)*gridWidth+(i+1)]));
+      }
+      if(i<gridWidth-1 && j<gridHeight-1){
+        springs.push_back(Spring(p[j*gridWidth+(i+1)],p[(j+1)*gridWidth+i]));
+      }
+    }
+  }
+
+  // Connecting secondary neighbors with springs (distance 2 and sqrt(4) in the grid)
+    for(int i=0; i<gridWidth; i++)
+    {
+      for(int j=0; j<gridHeight; j++)
+      {
+        if(i<gridWidth-2){
+          springs.push_back(Spring(p[j*gridWidth+i],p[j*gridWidth+(i+2)]));
+        }
+        if(j<gridHeight-2){
+          springs.push_back(Spring(p[j*gridWidth+i],p[(j+2)*gridWidth+i]));
+        }
+        if(i<gridWidth-2 && j<gridHeight-2){
+          springs.push_back(Spring(p[j*gridWidth+i],p[(j+2)*gridWidth+(i+2)]));
+        }
+        if(i<gridWidth-2 && j<gridHeight-2){
+          springs.push_back(Spring(p[j*gridWidth+(i+2)],p[(j+2)*gridWidth+i]));
+        }
+      }
+    }
+
+}
+
+void shader(){
+
+  for(int i = 0; i<gridWidth-1; i++){
+    for(int j=0; j<gridHeight-1; j++){
+      Vector3f n1 = triangleNorm(p[j*gridWidth+(i+1)],p[j*gridWidth+i],p[(j+1)*gridWidth+i]);
+      p[j*gridWidth+(i+1)].normal += n1;
+      p[j*gridWidth+i].normal += n1;
+      p[(j+1)*gridWidth+i].normal += n1;
+
+      Vector3f n2 = triangleNorm(p[(j+1)*gridWidth+(i+1)],p[j*gridWidth+(i+1)],p[(j+1)*gridWidth+i]);
+      p[(j+1)*gridWidth+(i+1)].normal += n2;
+      p[j*gridWidth+(i+1)].normal += n2;
+      p[(j+1)*gridWidth+i].normal += n2;
+    }
+  }
+
+  glBegin(GL_TRIANGLES);
+  glColor3f(1.0f,1.0f,1.0f);
+  for(int i = 0; i<gridWidth-1; i++){
+    for(int j=0; j<gridHeight-1; j++){
+      
+      drawTriangle(p[j*gridWidth+(i+1)],p[j*gridWidth+i],p[(j+1)*gridWidth+i]);
+      drawTriangle(p[(j+1)*gridWidth+(i+1)],p[j*gridWidth+(i+1)],p[(j+1)*gridWidth+i]);
+    }
+  }
+  glEnd();
+}
+
+vector<Particles> cloth1 = drawCloth(14,10,55,45);
+
+//****************************************************
 // function that does the actual drawing of stuff
 //***************************************************
 void myDisplay() {
 
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	glMatrixMode(GL_MODELVIEW);             // indicate we are specifying camera transformations
 	glLoadIdentity();
-
-  //draw cloth
-  glEnable(GL_LIGHTING);
-  glMaterialfv(GL_FRONT, GL_AMBIENT, COLOR(0.8f, 0.0f, 1.0f));  //set material
-  glMaterialfv(GL_FRONT, GL_DIFFUSE, COLOR(0.8f, 0.0f, 1.0f));
-  glMaterialfv(GL_BACK, GL_AMBIENT, COLOR(1.0f, 1.0f, 0.0f));
-  glMaterialfv(GL_BACK, GL_DIFFUSE, COLOR(1.0f, 1.0f, 0.0f));
-  glBegin(GL_TRIANGLES);
-  {
-      for(int i=0; i<gridSize-1; ++i)
-      {
-        for(int j=0; j<gridSize-1; ++j)
-        {
-          glNormal3fv(currentBalls[i*gridSize+j].normal);
-          glVertex3fv(currentBalls[i*gridSize+j].position);
-          glNormal3fv(currentBalls[i*gridSize+j+1].normal);
-          glVertex3fv(currentBalls[i*gridSize+j+1].position);
-          glNormal3fv(currentBalls[(i+1)*gridSize+j].normal);
-          glVertex3fv(currentBalls[(i+1)*gridSize+j].position);
-
-          glNormal3fv(currentBalls[(i+1)*gridSize+j].normal);
-          glVertex3fv(currentBalls[(i+1)*gridSize+j].position);
-          glNormal3fv(currentBalls[i*gridSize+j+1].normal);
-          glVertex3fv(currentBalls[i*gridSize+j+1].position);
-          glNormal3fv(currentBalls[(i+1)*gridSize+j+1].normal);
-          glVertex3fv(currentBalls[(i+1)*gridSize+j+1].position);
-        }
-      }
-    }
-    glEnd();
-    glDisable(GL_LIGHTING);
-  }
+  shader();
 	
 	glPopMatrix();
 	
 	glFlush();
-  	glutSwapBuffers();          // swap buffers (we earlier set double buffer)
+  glutSwapBuffers();          // swap buffers (we earlier set double buffer)
+  glutPostRedisplay();
 }
 
 
